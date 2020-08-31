@@ -1,0 +1,64 @@
+---
+title: "RegressionAnalysis (RQ2)"
+author: "Rodrigo Bonifacio"
+date: "1/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ROSE)
+library(rpart)
+library(splitstackshape)
+setwd(".")
+```
+
+### Load the dataset with merging conflicts 
+
+```{r load}
+df <- read.csv("df.csv")
+nrow(df) 
+colnames(df)
+```
+
+### Note, we have an imbalanced dataset
+
+```{r imbalanced}
+df$bic <- ifelse(df$bic, 1, 0)
+table(df$bic)
+prop.table(table(df$bic))
+```
+
+### Logistic regression 
+
+```{r lr}
+df.model <- glm(bic ~ files + authors + commits + conflicts, data = df, family = "binomial")
+summary(df.model)
+```
+
+### Build a statified data sample
+
+```{r sample}
+df.test <- stratified(df, "bic", 0.1)
+
+
+nrow(df.test)
+table(df.test$bic)
+prop.table(table(df.test$bic))
+```
+
+### Checking the accuraccy withouth solving the problem with imbalanced 
+
+```{r accuracy-imbalanced-data}
+df.tree <- rpart(bic~., data = df)
+df.pred <- predict(df.tree, newdata = df.test)
+accuracy.meas(df.test$bic, df.pred)
+```
+
+```{r accuracy-balanced-data}
+df.rose <- ROSE(bic ~ ., data = df, seed = 1)$data
+table(df.rose$bic)
+tree.rose <- rpart(bic ~ ., data = df.rose)
+tree.rose.pred <- predict(tree.rose, newdata = df.test)
+accuracy.meas(df.test$bic, tree.rose.pred)
+```
